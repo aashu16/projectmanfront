@@ -1,0 +1,198 @@
+import React, { Component } from 'react';
+import axios from 'axios';
+import { BrowserRouter as Router, Route, Link, Redirect } from "react-router-dom";
+import injectSheet from 'react-jss';
+
+class Signin extends Component {
+    constructor (props) {
+	super(props);
+
+	this.userSignIn = this.userSignIn.bind(this);
+	this.changeForm = this.changeForm.bind(this);
+
+	this.state = {
+	    email: '',
+	    pword: '',
+	    isAuthenticated: false
+	};
+    }
+
+    componentDidMount() {
+	const self = this;
+
+	if (localStorage.getItem('token') === null) {
+	    console.log('no token');
+	    this.setState({
+    		isAuthenticated: false
+    	    });
+	} else {
+	    let jwttoken = localStorage.getItem('token').split(" ")[1];
+	    
+	    axios({
+		url: 'http://api.induago.com/check',
+		method: 'get',
+    		headers: { 'Authorization': "Bearer " + jwttoken }
+    	    })
+    		.then(function (response) {
+    		    console.log(response.data.results);
+    		    if (response.data.success) {
+			console.log('checked');
+			// currentComponent.isAuthenticated = true;
+			// console.log(self.state);
+			self.setState({
+			    isAuthenticated: true
+			});
+    		    } else {
+    			console.log('Password incorrect.');
+			// currentComponent.isAuthenticated = false;
+			self.setState({
+			    isAuthenticated: false
+			});
+    		    }});
+	}
+    }
+
+    changeForm(e) {
+	e.preventDefault();
+
+	const state = this.state;
+	state[e.target.name] = e.target.value;
+
+	this.setState(state);
+	// console.log(state);
+    }
+
+    userSignIn(e) {
+	e.preventDefault();
+
+	const self = this;
+
+	const { email, pword } = this.state;
+	axios.post('http://api.induago.com/signin', {
+	    email: email,
+	    password: pword
+	}).then(function (response) {
+	    console.log(response.data);
+	    if (response.data.success) {
+		localStorage.setItem('token', response.data.token);
+		self.setState({
+		    isAuthenticated: true
+		});
+	    } else {
+		console.log('Password incorrect.');
+		self.setState({
+		    isAuthenticated: false
+		});
+	    };
+	}).catch(function(error) {
+	    console.log(error);
+	});
+    }
+
+    render () {
+
+	const { classes } = this.props;
+
+	const { from } = this.props.location.state || { from: { pathname: "/lists" } };
+
+	if (this.state.isAuthenticated) {
+	    return <Redirect to={ from } />;
+	}
+	
+	return(
+	    <div className={ classes.signinmain }>
+	      <div className={ classes.signinform }>
+		<div className={ classes.emailcontainer }>
+		  <input
+		    name='email'
+		    type='text'
+		    onChange={ this.changeForm }
+		    className={classes.email}
+		    placeholder="Email"
+		    />
+		</div>
+		<div className={ classes.pwordcontainer }>
+		  <input
+		    name='pword'
+		    type='password'
+		    onChange={ this.changeForm }
+		    className={classes.pword}
+		    placeholder="Password"
+		    />
+		</div>
+		<div>
+		  <button
+		    className="signinbutton"
+		    onClick={ this.userSignIn }>
+		    Submit
+		  </button>
+		</div>
+		<div>
+		  <Link to='/signup' style={{ fontSize: '24px'}}>New user? Signup!</Link>
+		</div>
+	      </div>
+	    </div>
+	);
+    }
+}
+
+const styles = {
+    '@import': [
+        'url(https://fonts.googleapis.com/css?family=Open+Sans|Raleway|Quicksand|Quattrocento)'
+    ],
+    signinmain: {
+	fontFamily: 'sans-serif',
+	fontSize: '48px',
+	width: '100%',
+	marginLeft: '15%',
+	marginTop: '15%'
+    },
+    email: {
+	fontFamily: 'Raleway',
+	fontSize: '24px',
+	border: 'none',
+	outline: 'none',
+	resize: 'none',
+	width: '60%',
+	height: '1em',
+	paddingTop: '5%',
+	borderBottom: '1px solid #94a2b7',
+	'@media (min-width: 1024px)': {
+	    width: '30%'
+	}
+    },
+    pword: {
+	fontFamily: 'Raleway',
+	fontSize: '24px',
+	border: 'none',
+	outline: 'none',
+	resize: 'none',
+	width: '60%',
+	height: '1em',
+	paddingTop: '5%',
+	borderBottom: '1px solid #94a2b7',
+	'@media (min-width: 1024px)': {
+	    width: '30%'
+	}
+    },
+    signinbutton: {
+	padding: '0px 16px',
+	textAlign: 'center',
+	fontSize: '1em',
+	borderRadius: '0px',
+	background: 'white',
+	color: '#4CAF50',
+	border: '2px solid #fff0b3',
+	'&:hover': {
+	    color: '#4CAF50',
+	    boxShadow: '0 0px 0px 0 rgba(0,0,0,0.24)',
+	    border: '2px solid #ffe680'
+	},
+	transitionDuration: '0.3s',
+	webkitTransitionDuration: '0.4s',
+	outline: 'none',
+	cursor: 'pointer'
+    }
+};
+
+export default injectSheet(styles)(Signin);

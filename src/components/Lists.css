@@ -1,0 +1,23 @@
+@import: [
+        'url(https://fonts.googleapis.com/css?family=Open+Sans|Raleway|Quicksand|Quattrocento)'
+];
+main {
+    font-family: ['Quattrocento', 'sans-serif'];
+    width: 100%;
+    padding-left: 20%;
+    font-size: 48px;
+    min-width: 500px;
+    text-align: center;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+    align-content: center;
+}
+
+listspan {
+    text-decoration: none;
+}
+
+listlink {
+    text-decoration: none;
+}

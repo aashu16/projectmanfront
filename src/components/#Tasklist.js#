@@ -1,0 +1,466 @@
+import React, { Component } from 'react';
+import injectSheet from 'react-jss';
+import shortid from 'shortid';
+import Taskitem from './Taskitem';
+import axios from 'axios';
+
+const fontsize = '24px';
+const messagetodo = 'Enter new task...';
+
+const TEXT_WIDTH = 16;
+const ALL = 'ALL';
+const LEFT = 'LEFT';
+const DONE = 'DONE';
+
+
+
+
+class Tasklist extends Component {
+    constructor(props) {
+	super(props);
+	this.handleClick = this.handleClick.bind(this);
+	this.deleteTodo = this.deleteTodo.bind(this);
+	this.addTodo = this.addTodo.bind(this);
+	this.editTodo = this.editTodo.bind(this);
+	this.toggleTodo = this.toggleTodo.bind(this);
+	this.sharelist = this.sharelist.bind(this);
+
+	// this.setAll = this.setAll.bind(this);
+	// this.setLeft = this.setLeft.bind(this);
+	// this.setDone = this.setDone.bind(this);
+	
+	this.state = {
+	    tasks: [],
+	    ids: [],
+	    action: ALL,
+	    list: 0,
+	    name: ''
+	};
+    }
+
+    componentDidMount() {
+    	let jwttoken = localStorage.getItem('token').split(" ")[1];
+	let request = 'http://api.example.com/list/'+this.props.taskid;
+	let self = this;
+	
+    	axios.get(request, {
+    	    headers: { 'Authorization': "Bearer " + jwttoken }
+    	})
+    	    .then(function (response) {
+    	    // console.log(response.data.results);
+    	    if (response.data.success) {
+    		return response.data.results;
+    	    } else {
+    		console.log('Password incorrect.');
+    	    }})
+    	    .then((json) => {
+    		json.map((task) => {
+    		    self.setState((prevState) => ({
+    			tasks: [...prevState.tasks, task],
+    			ids: [...prevState.ids, task.id],
+			list: self.props.taskid
+    		    }));
+		    console.log(task);
+    		});
+    	    })
+    	    .catch(function(error) {
+    		console.log(error);
+    	    });
+    }
+
+    componentWillReceiveProps(nextProps, prevState) {
+	console.log(nextProps);
+	if ( nextProps.taskid !== this.props.taskid ) {
+	    let jwttoken = localStorage.getItem('token').split(" ")[1];
+    	    this.setState({
+    	    	tasks: [],
+    	    	ids: [],
+    	    	action: ALL,
+	    	list: nextProps.taskid
+    	    });
+    	    let request = 'http://api.example.com/list/'+nextProps.taskid;
+    	    axios.get(request, {
+    		headers: { 'Authorization': "Bearer " + jwttoken }
+    	    })
+    		.then(function (response) {
+    		    // console.log(response.data.results);
+    		    if (response.data.success) {
+    			return response.data.results;
+    		    } else {
+    			console.log('Password incorrect.');
+    		    }})
+    		.then((json) => {
+    		    json.map((task) => {
+    			this.setState((prevState) => ({
+    			    tasks: [...prevState.tasks, task],
+    			    ids: [...prevState.ids, task.id]
+    			}));
+    		    });
+    		})
+    		.catch(function(error) {
+    		    console.log(error);
+    		});
+	} else {
+	    console.log('Same taskid');
+	}
+    }
+
+    // setAll(e) {
+    // 	// e.preventDefault();
+    // 	// this.setState((prevState) => ({
+    // 	//     status: !prevState.status
+    // 	// }));
+	
+    // 	this.setState((prevState) => ({
+    // 	    action: ALL
+    // 	}));
+    // 	console.log(this.state.action);
+    // }
+
+    // setLeft(e) {
+    // 	this.setState((prevState) => ({
+    // 	    action: LEFT
+    // 	}));
+    // }
+
+    // setDone(e) {
+    // 	this.setState((prevState) => ({
+    // 	    action: DONE
+    // 	}));
+    // }
+   
+    deleteTodo(index) {
+	let trackerid = this.state.ids.indexOf(index);
+	console.log(this.state.tasks[trackerid].id);
+	
+	this.setState((prevState) => ({
+	    tasks: prevState.tasks.filter((i) => i.id !== index),
+	    ids: prevState.ids.filter((i) => i !== index)
+	}));
+    }
+
+    handleClick(e) {
+	e.preventDefault();
+	const todotext = this.refs.todotext;
+	if (todotext.value  !== '') {
+	    this.addTodo(todotext.value);
+	}
+	todotext.value = '';
+    }
+
+    addTodo(newtodo) {
+	let createdat = Date.now() / 1000;
+	let ind = shortid.generate();
+	this.setState((prevState) => ({
+	    tasks: [...prevState.tasks, {task: newtodo, id: ind, createdat: createdat,
+					 done: 0}],
+	    ids: [...prevState.ids, ind]
+	}));
+
+	let data = {
+	    task: newtodo,
+	    refid: ind,
+	    createdat: createdat,
+	    reftasklist: this.props.taskid
+	};
+
+	let jwttoken = localStorage.getItem('token').split(" ")[1];
+
+	axios({
+	    url: 'http://api.example.com/new/task',
+	    method: 'post',
+	    headers: { 'Authorization': "Bearer " + jwttoken },
+	    data: data
+	}).then(function (response) {
+	    console.log(response.data);
+	    if (response.data.success) {
+		console.log('Added.');
+	    } else {
+		console.log('Password incorrect.');
+	    };
+	}).catch(function(error) {
+	    console.log(error);
+	});
+
+	console.log(this.state.tasks);
+    }
+
+    sharelist(e) {
+	e.preventDefault();
+	
+	let shareuserref = this.refs.sharewith;
+	let shareuser = shareuserref.value;
+
+	let data = {
+	    shareuser: shareuser
+	};
+
+	let request = 'http://api.example.com/list/' + this.props.taskid + '/share';
+
+	let jwttoken = localStorage.getItem('token').split(" ")[1];
+
+	axios({
+	    url: request,
+	    method: 'post',
+	    headers: { 'Authorization': "Bearer " + jwttoken },
+	    data: data
+	}).then(function (response) {
+	    console.log(response.data);
+	    if (response.data.success) {
+		console.log('Shared.');
+	    } else {
+		console.log('Password incorrect.');
+	    };
+	}).catch(function(error) {
+	    console.log(error);
+	});
+    }
+
+    editTodo(newtext, index) {
+	let newtextId = this.state.ids.indexOf(index);
+	let statist = this.state.tasks.slice();
+	let createdby = this.state.tasks[newtextId].createdby;
+	let createdat = this.state.tasks[newtextId].createdat;
+	let tododone = this.state.tasks[newtextId].done;
+	let editedtask = newtext;
+	// let editedat = Date.now();
+	statist.splice(newtextId, 1, {task: editedtask, id: index, createdat: createdat,
+				      createdby: createdby,
+				      done: tododone});
+	this.setState({
+	    tasks: statist
+	});
+	
+	console.log(this.state.tasks);
+    }
+
+    toggleTodo(index) {
+	let todoId = this.state.ids.indexOf(index);
+	let statist = this.state.tasks.slice();
+	let text = this.state.tasks[todoId].task;
+	let createdby = this.state.tasks[todoId].createdby;
+	let createdat = this.state.tasks[todoId].createdat;
+	let tododone = this.state.tasks[todoId].done ? 0 : 1;
+	statist.splice(todoId, 1, {task: text, id: index, createdat: createdat,
+				   createdby: createdby,
+				   done: tododone});
+	this.setState({
+	    tasks: statist
+	});
+    }
+
+    render() {
+	const { classes } = this.props;
+
+	const taskshow = (tasks, show) => {
+	    if (show === 'ALL') {
+		return tasks;
+	    } else if (show === 'DONE') {
+		return (
+		    tasks.filter(task => task.done)
+		);
+	    } else if (show === 'LEFT'){
+		return (
+		    tasks.filter(task => !task.done)
+		);
+	    } else {
+		console.log('Weird input;');
+		return (
+		    <div></div>
+		);
+	    }
+	};
+	
+	return (
+	    <div className="main">
+	      <div className="listtitle" align='center'>
+	    	{ this.state.name }
+	      </div>
+	      <div className="formcontainer"
+		   style={{
+		       width: '80%',
+    		       display: 'flex',
+		       flexDirection: 'column',
+    		       justifyContent: 'center',
+    		       alignItems: 'center',
+    		       paddingLeft: '10%',
+    		       paddingRight: '10%'
+		   }}>
+	    	<form>
+	    	  <div className="textcontainer">
+	    	    <input type="text"
+	    		   className="text"
+	    		   size="50"
+	    		   placeholder={ messagetodo }
+	    		   ref="todotext"
+			   style={{
+			       fontFamily: 'Raleway',
+			       fontSize: '42px',
+			       outline: 'none',
+			       resize: 'none',
+			       border: 'none',
+			       width: '80%',
+			       height: '1.5em',
+			       paddingTop: '5%'
+			   }}
+			   />
+	    	    <input type="submit"
+	    		   className="btnsubmit"
+	    		   onClick={ this.handleClick }
+	    		   value="+"
+			   style={{
+			       border: '1px solid white',
+			       fontSize: '42px',
+			       height: '100%',
+			       width: '2em',
+			       textAlign: 'center',
+			       cursor: 'pointer'
+			   }}
+			   />
+	    	  </div>
+	    	</form>
+	    	<div className="tasklist">
+	    	  {this.state.tasks.map((task) => (
+	    		    <Taskitem key={ task.id }
+	    			      todo={ task }
+	    			      index={ task.id }
+	    			      delact={ this.deleteTodo }
+	    			      edit={ this.editTodo }
+	    			      done={ task.done }
+	    			      toggle={ this.toggleTodo } />
+	    	  ))}
+	    	</div>
+	      </div>
+		<div className="sharecontainer"
+	    style={{
+		width: '80%',
+    		display: 'flex',
+    		justifyContent: 'start',
+    		alignItems: 'center',
+    		paddingLeft: '10%',
+    		paddingRight: '10%',
+		paddingTop: '10%'
+	    }}
+		>
+		<div>
+		  <input type="text"
+			 className="textshare"
+			 size="30"
+			 placeholder="Share with..."
+			 ref="sharewith"
+			 style={{
+			     fontFamily: 'Raleway',
+			     fontSize: '30px',
+			     outline: 'none',
+			     resize: 'none',
+			     border: 'none',
+			     width: '80%',
+			     height: '1.5em'
+			 }}/>
+		</div>
+		<div>
+		  <div className="btnshare"
+			 onClick={ this.sharelist }
+			 style={{
+			     fontFamily: 'Raleway',
+			     fontSize: '30px',
+			     resize: 'none',
+			     height: '1.5em',
+			     cursor: 'pointer',
+			     border: '1px 2px solid #195e60'
+			 }}
+			 > Share</div>
+		</div>
+	      </div>
+	    </div>
+	);
+    }
+}
+
+const styles = {
+    '@import': [
+        'url(https://fonts.googleapis.com/css?family=Open+Sans|Raleway|Quicksand|Quattrocento)'
+    ],
+    main: {
+	fontFamily: ['Quattrocento', 'sans-serif'],
+	width: '100%',
+	fontSize: '48px',
+	// width: '40%',
+	minWidth: '500px',
+	// paddingLeft: '10%',
+	// marginRight: '10%',
+	textAlign: 'center'
+    },
+    text: {
+	fontFamily: ['Raleway', 'sans-serif'],
+	fontSize: fontsize,
+	outline: 'none',
+	resize: 'none',
+	border: 'none',
+	width: '100%',
+	height: '1.5em'
+    },
+    formcontainer: {
+    	width: '80%',
+    	display: 'flex',
+	flexDirection: 'column',
+    	justifyContent: 'center',
+    	alignItems: 'center',
+    	paddingLeft: '10%',
+    	paddingRight: '10%'
+    },
+    textcontainer: {
+	// fontSize: fontsize,
+	width: 'inherit',
+	// height: '1em',
+	// '&:hover': {
+	    // borderBottom: '1px solid black'
+	// },
+	display: 'flex',
+	justifyContent: 'stretch',
+	alignItems: 'center',
+	// marginLeft: '10%',
+	// marginRight: '10%'
+	paddingRight: '10%',
+	paddingLeft: '10%'
+    },
+    btnsubmit: {
+	// padding: '8px',
+	fontSize: fontsize,
+	border: '1px solid white',
+	'&:hover': {
+	    border: '1px solid black'
+	},
+	height: '100%',
+	width: '2em',
+	textAlign: 'center',
+	cursor: 'pointer'
+    },
+    textareaholder: {
+	
+    },
+    buttoncontainer: {
+	display: 'flex',
+	justifyContent: 'center'
+    },
+    alld: {
+	padding: '4px',
+	borderWidth: '1px',
+	borderRadius: '2px'
+    },
+    leftd: {
+	padding: '4px',
+	borderWidth: '1px',
+	borderRadius: '2px'
+    },
+    doned: {
+	padding: '4px',
+	borderWidth: '1px',
+	borderRadius: '2px'
+    },
+    tasklist: {
+	
+    }
+};
+
+export default Tasklist;
